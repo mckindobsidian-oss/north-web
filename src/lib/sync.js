@@ -242,7 +242,12 @@ export function createSync({ store, client = null, configured = Boolean(client),
       }
       return false;
     });
-    const rows = tasks.map((t, i) => taskToRow(t, userId, i));
+    const owner = userId;
+    const key = `north:tasks-baseline:${owner}`;
+    const baseline = await store.get(key) || {};
+    const current = Object.fromEntries(tasks.map((task, index) => [task.id, taskToRow(task, owner, index)]));
+    const rows = Object.values(current).filter(row => JSON.stringify(row) !== JSON.stringify(baseline[row.id]));
+    if (owner !== userId) return false;
     if (rows.length) {
       let { error } = await client.from("tasks").upsert(rows, { onConflict: "id" });
       // The difficulty + description columns arrive with migration 005. A
@@ -260,12 +265,15 @@ export function createSync({ store, client = null, configured = Boolean(client),
       }
       if (error) { log("task push failed:", error.message); return false; }
     }
-    const ids = rows.map((r) => r.id);
-    let del = client.from("tasks").delete().eq("user_id", userId);
-    if (ids.length) del = del.not("id", "in", `(${ids.join(",")})`);
-    const { error: delErr } = await del;
-    if (delErr) log("task prune failed:", delErr.message);
-    return !delErr;
+    const removed = Object.keys(baseline).filter(id => isUuid(id) && !Object.hasOwn(current, id));
+    if (removed.length) {
+      if (owner !== userId) return false;
+      const { error } = await client.from("tasks").delete().eq("user_id", owner).in("id", removed);
+      if (error) { log("task delete failed:", error.message); return false; }
+    }
+    if (owner !== userId) return false;
+    await store.set(key, current);
+    return true;
   }
 
   /**
@@ -494,6 +502,7 @@ export function createSync({ store, client = null, configured = Boolean(client),
       if (owner !== userId || revision !== localRevision) return false;
       await store.set(`u:${key}`, profile, false, { remote: true });
       await store.set(`north:pm-baseline:${owner}`, profile.pm || {});
+      await store.set(`north:tasks-baseline:${owner}`, Object.fromEntries((profile.tasks || []).filter(task => isUuid(task.id)).map((task, index) => [task.id, taskToRow(task, owner, index)])));
       await store.set(`bd:${key}`, (boardRes.data || []).map(rowToBoard), false, { remote: true });
 
       // Today's raw sessions (what the Focus screen lists) and the derived daily

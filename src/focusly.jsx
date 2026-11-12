@@ -4920,7 +4920,7 @@ function HiddenWebsiteSettings({ user }) {
     <h3 id="hidden-sites-heading" style={{ ...sectionTitle(), margin: "0 0 8px" }}>Hidden websites and apps</h3>
     <p style={{ color: K.sub, fontSize: 13, lineHeight: 1.5 }}>Choose from your recorded activity. Hidden items are excluded from reports and totals; their limits still apply.</p>
     <form className="north-inline-form" onSubmit={(event) => { event.preventDefault(); save(draft); }} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
-      <div style={{ flex: "1 1 240px", minWidth: 0 }}><FocusTaskPicker label="Website or app to hide" emptyLabel="Choose a website or app…" tasks={targets.filter(([key]) => !sites.includes(key)).map(([key, item]) => ({ id: key, title: `${item.name} · ${item.kind === "app" ? "app" : "website"}` }))} value={draft} onChange={(value) => setDraft(value || "")} /></div>
+      <div style={{ flex: "1 1 240px", minWidth: 0 }}><FocusTaskPicker search label="Website or app to hide" emptyLabel="Choose a website or app…" tasks={targets.filter(([key]) => !sites.includes(key)).map(([key, item]) => ({ id: key, title: `${item.name} · ${item.kind === "app" ? "app" : "website"}` }))} value={draft} onChange={(value) => setDraft(value || "")} /></div>
       <button className="b" type="submit" disabled={saving || !draft} style={{ ...tag(true, K.acc), padding: "10px 14px" }}>Hide selected</button>
     </form>
     {sites.length ? sites.map((host) => <div key={host} className="flow-target-row"><strong style={{ overflowWrap: "anywhere" }}>{host.startsWith("app:") ? `${host.slice(4)} · app` : host}</strong><button className="b" type="button" disabled={saving} onClick={() => save(host, true)} aria-label={`Show ${host} in usage reports`} style={{ color: K.acc, padding: 10 }}>Show again</button></div>) : <p style={{ color: K.sub, fontSize: 12 }}>No hidden items.</p>}
@@ -5425,7 +5425,7 @@ export default function App() {
         if (refreshError || !data?.session) throw new Error("Your North session expired. Sign in to North again, then reconnect the extension.");
         if (data.session.user?.id !== user.id) throw new Error("The signed-in North account changed. Try connecting again.");
         const result = await connectExtensionAccount({
-          url: normalizedUrl, anonKey: supabaseAnonKey, webUrl: window.location.origin,
+          url: normalizedUrl, anonKey: supabaseAnonKey, webUrl: window.location.origin + window.location.pathname,
           targetId: requestedId, nonce, session: data.session,
         });
         if (!result.ok) throw new Error(result.reason || "The extension did not confirm the account connection.");
